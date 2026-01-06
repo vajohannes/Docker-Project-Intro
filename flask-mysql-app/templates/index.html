@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask + MySQL Docker App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        
+        .connected {
+            background: #10b981;
+            color: white;
+        }
+        
+        .disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+        }
+        
+        .card h2 {
+            color: #4f46e5;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2 i {
+            font-size: 1.2em;
+        }
+        
+        .info-item {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .label {
+            font-weight: 600;
+            color: #6b7280;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .value {
+            color: #1f2937;
+            font-size: 1.1rem;
+        }
+        
+        .users-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        
+        tr:hover {
+            background: #f9fafb;
+        }
+        
+        .api-section {
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .endpoint {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .endpoint .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .method.get {
+            background: #10b981;
+            color: white;
+        }
+        
+        .method.post {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-docker"></i> Flask + MySQL Docker Application</h1>
+            <p>Multi-container application powered by Docker Compose</p>
+            
+            {% if db_status == "Connected" %}
+            <div class="status-badge connected">
+                <i class="fas fa-check-circle"></i> Database Connected
+            </div>
+            {% else %}
+            <div class="status-badge disconnected">
+                <i class="fas fa-times-circle"></i> Database Disconnected
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h2><i class="fas fa-database"></i> Database Information</h2>
+                <div class="info-item">
+                    <span class="label">Database Status</span>
+                    <span class="value">{{ db_status }}</span>
+                </div>
+                {% if db_version %}
+                <div class="info-item">
+                    <span class="label">MySQL Version</span>
+                    <span class="value">{{ db_version }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Total Users</span>
+                    <span class="value">{{ user_count }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-server"></i> Container Info</h2>
+                <div class="info-item">
+                    <span class="label">Frontend</span>
+                    <span class="value">Flask (Python 3.9)</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Backend</span>
+                    <span class="value">MySQL 5.7</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Orchestration</span>
+                    <span class="value">Docker Compose</span>
+                </div>
+            </div>
+        </div>
+        
+        {% if recent_users %}
+        <div class="card">
+            <h2><i class="fas fa-users"></i> Recent Users</h2>
+            <div class="users-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in recent_users %}
+                        <tr>
+                            <td>{{ user[0] }}</td>
+                            <td>{{ user[1] }}</td>
+                            <td>{{ user[2] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <h2><i class="fas fa-code"></i> API Endpoints</h2>
+            <div class="api-section">
+                <p>Available REST API endpoints:</p>
+                
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <code>/health</code>
+                    <p style="margin-top: 8px; color: #6b7280;">Health check endpoint</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method get">GET</span>
+                    <code>/users</code>
+                    <p style="margin-top: 8px; color: #6b7280;">Get all users (JSON)</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <code>/users</code>
+                    <p style="margin-top: 8px; color: #6b7280;">Add new user (JSON: name, email)</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if error %}
+        <div class="card" style="background: #fee; border-left: 4px solid #ef4444;">
+            <h2 style="color: #dc2626;"><i class="fas fa-exclamation-triangle"></i> Error</h2>
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="footer">
+        <p>Project 3: Multi-container Docker Application | Built with Flask, MySQL, and Docker Compose</p>
+        <p>Access via: http://localhost:5000</p>
+    </div>
+    
+    <script>
+        // Auto-refresh health status every 30 seconds
+        setTimeout(() => {
+            window.location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

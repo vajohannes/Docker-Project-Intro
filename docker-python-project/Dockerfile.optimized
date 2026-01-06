@@ -1,0 +1,31 @@
+# Multi-stage build for smaller image
+FROM python:3.9-slim AS builder
+
+WORKDIR /app
+
+# Copy requirements first for better layer caching
+COPY requirements.txt .
+
+# Install dependencies
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Final stage
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /root/.local /root/.local
+
+# Make sure scripts in .local are usable
+ENV PATH=/root/.local/bin:/Users/vaj/anaconda3/bin:/Users/vaj/anaconda3/condabin:/Library/Frameworks/Python.framework/Versions/3.11/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin
+
+# Copy application
+COPY . .
+
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Default command
+CMD ["python", "process_data.py"]
